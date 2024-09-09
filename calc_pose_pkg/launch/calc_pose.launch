@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="calc_pose" type="calc_pose_server.py" name="calc_pose_server"  output="screen">  
+  </node>
+</launch>

@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="detect_pose" type="detect_pose_server.py" name="detect_pose_server"  output="screen">  
+  </node>
+</launch>

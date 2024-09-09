@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="grasp_object" type="grasp_object_server.py" name="grasp_object_server"  output="screen">  
+  </node>
+</launch>
