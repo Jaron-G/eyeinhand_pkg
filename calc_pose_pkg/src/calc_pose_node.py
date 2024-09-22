@@ -39,36 +39,34 @@ def calc_pose():
     
     # 物体相对于相机坐标
     path = "/catkin_ws/src/grasp_eyeinhand/"
-    # rvec = np.array([[[-2.89574422 ,-0.03344724,  0.3793738 ]]] )
-    # tvec = np.array([[[  25.62165022, -169.08106376, 1140.32568696]]]).reshape(3,1)
+
     rvec = np.load(path+ "images/" + "rvecs.npy")
     tvec = np.load(path+ "images/" + "tvecs.npy").reshape(3,1)
-    # tvec[2] = 450
     
-    rot = np.array([[  0.    ,       1.    ,       0.   ,       0 ],
- [  1.     ,      0.      ,     0.     ,    0],
- [  0.      ,     0.     ,      -1.    ,     0],
- [  0.      ,     0.    ,       0.    ,       1.        ]])
-    
+    #####################################
     # tvec_back = tvec.copy()
     # tvec[0] = tvec[1]
     # tvec[1] = -tvec_back[0]
     # tvec[0],tvec[1] = tvec[1],tvec[0]
+    # r_matrix_g2C = np.identity(3)
+    #######################################3
     
-    t0 = np.array([[[  0, 0, 0]]]).reshape(3,1)
-    r_matrix_g2C = rodrigues_rotation_vec_to_R(rvec)
-    matrix_g2C = r_t_to_homogeneous_matrix(r_matrix_g2C,t0)
-    r_matrix_p = np.identity(3)
+    # t0 = np.array([[[  0, 0, 0]]]).reshape(3,1)
+    r_matrix_o2C = rodrigues_rotation_vec_to_R(rvec)
+    # matrix_g2C = r_t_to_homogeneous_matrix(r_matrix_g2C,t0)
     # t_matrix_g2C = np.array([ 0, 0 ,0]).reshape(3,1)
     # r_matrix_g2C = rodrigues_rotation_vec_to_R(rvec)
-    position = r_t_to_homogeneous_matrix(r_matrix_p,tvec)
-    position2 = rot @ matrix_g2C @ position.copy()
+    matrix_o2C = r_t_to_homogeneous_matrix(r_matrix_o2C,tvec)
     
-    print("matrix_g2C: ",matrix_g2C)
+    print("matrix_o2C: ",matrix_o2C)
     
     # 手眼矩阵，将相机与夹爪位置重合
     # matrix_C2H= np.array([[ 1, 0, 0, 0],[ 0, -1 , 0, 0],[0, 0 ,-1 , 0],[0, 0 ,0 , 1]])
     matrix_C2H = np.loadtxt(path+ "config/" +"matrix.txt")
+    # matrix_C2H = np.array([[0.7071068, -0.7071068, 0,-0.1011*1000],
+    #         [0.7071068, 0.7071068, 0, 0.09678*1000],
+    #         [0, 0, 1 ,0.07269*1000],
+    #         [0,0,0,1]])
     print("matrix_C2H: ",matrix_C2H)
     
     # 机器人末端位姿
@@ -86,10 +84,17 @@ def calc_pose():
     
     r_matrix_H2B = tfs.quaternions.quat2mat(current_rotation)
     matrix_H2B = r_t_to_homogeneous_matrix(r_matrix_H2B,current_position)
+    
     print("matrix_H2B: ",matrix_H2B)
 
     
-    matrix_g2B = matrix_H2B @ matrix_C2H @ position2
+    matrix_g2o = np.array([[1, 0, 0,0],
+                            [0, -1, 0, 0],
+                            [0, 0, -1 ,0],
+                            [0,0,0,1]])
+    
+    matrix_g2B = matrix_H2B @ matrix_C2H @ matrix_o2C @ matrix_g2o
+    # matrix_g2B[0][3] =  -matrix_g2B[0][3]
     print("matrix_g2B: ",matrix_g2B)
     
     np.save(path+ "images/" + "matrix_g2B.npy",matrix_g2B)
