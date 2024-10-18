@@ -40,47 +40,40 @@ def calc_pose():
     # 物体相对于相机坐标
     path = "/catkin_ws/src/grasp_eyeinhand/"
 
-    rvec = np.load(path+ "images/" + "rvecs.npy")
-    tvec = np.load(path+ "images/" + "tvecs.npy").reshape(3,1)
+    measuring_cylinder_rvec = np.load(path+ "images/" + "measuring_cylinder_rvec.npy")
+    measuring_cylinder_tvec = np.load(path+ "images/" + "measuring_cylinder_tvec.npy").reshape(3,1)
     
-    #####################################
-    # tvec_back = tvec.copy()
-    # tvec[0] = tvec[1]
-    # tvec[1] = -tvec_back[0]
-    # tvec[0],tvec[1] = tvec[1],tvec[0]
-    # r_matrix_g2C = np.identity(3)
-    #######################################3
+    stirrer_rvec = np.load(path+ "images/" + "stirrer_rvec.npy")
+    stirrer_tvec = np.load(path+ "images/" + "stirrer_tvec.npy").reshape(3,1)
     
-    # t0 = np.array([[[  0, 0, 0]]]).reshape(3,1)
-    r_matrix_o2C = rodrigues_rotation_vec_to_R(rvec)
-    # matrix_g2C = r_t_to_homogeneous_matrix(r_matrix_g2C,t0)
-    # t_matrix_g2C = np.array([ 0, 0 ,0]).reshape(3,1)
-    # r_matrix_g2C = rodrigues_rotation_vec_to_R(rvec)
-    matrix_o2C = r_t_to_homogeneous_matrix(r_matrix_o2C,tvec)
+    medicine_bottle_rvec = np.load(path+ "images/" + "medicine_bottle_rvec.npy")
+    medicine_bottle_tvec = np.load(path+ "images/" + "medicine_bottle_tvec.npy").reshape(3,1)
+
+    mc_r_matrix_o2C = rodrigues_rotation_vec_to_R(measuring_cylinder_rvec)
+    mc_matrix_o2C = r_t_to_homogeneous_matrix(mc_r_matrix_o2C,measuring_cylinder_tvec)
     
-    print("matrix_o2C: ",matrix_o2C)
+    st_r_matrix_o2C = rodrigues_rotation_vec_to_R(stirrer_rvec)
+    st_matrix_o2C = r_t_to_homogeneous_matrix(st_r_matrix_o2C,stirrer_tvec)
     
-    # 手眼矩阵，将相机与夹爪位置重合
-    # matrix_C2H= np.array([[ 1, 0, 0, 0],[ 0, -1 , 0, 0],[0, 0 ,-1 , 0],[0, 0 ,0 , 1]])
+    mb_r_matrix_o2C = rodrigues_rotation_vec_to_R(medicine_bottle_rvec)
+    mb_matrix_o2C = r_t_to_homogeneous_matrix(mb_r_matrix_o2C,medicine_bottle_tvec)
+    
+    
+    print("mc_matrix_o2C: ",mc_matrix_o2C)
+    print("st_matrix_o2C: ",st_matrix_o2C)
+    print("st_matrix_o2C: ",mb_matrix_o2C)
+    
+    # 手眼矩阵
     matrix_C2H = np.loadtxt(path+ "config/" +"matrix.txt")
-    # matrix_C2H = np.array([[0.7071068, -0.7071068, 0,-0.1011*1000],
-    #         [0.7071068, 0.7071068, 0, 0.09678*1000],
-    #         [0, 0, 1 ,0.07269*1000],
-    #         [0,0,0,1]])
     print("matrix_C2H: ",matrix_C2H)
     
     # 机器人末端位姿
     ur = UR_robot()
     current_pose = ur.get_current_pose()
-    # current_position = np.array([ 100 , 200, 300]).reshape(3,1)
-    # current_rotation = np.array([ 1, 0, 0, 0])
 
     current_position = np.array([(current_pose.position.x)*1000 ,current_pose.position.y*1000, current_pose.position.z*1000]).reshape(3,1)
     #transforms3d四元数转矩阵函数的四元数格式为(w,x,y,z)
     current_rotation = np.array([current_pose.orientation.w,current_pose.orientation.x,current_pose.orientation.y,current_pose.orientation.z])
-    
-    # matrix_g2H =  matrix_C2H @ matrix_g2C 
-    # print("matrix_g2H: ",matrix_g2H)
     
     r_matrix_H2B = tfs.quaternions.quat2mat(current_rotation)
     matrix_H2B = r_t_to_homogeneous_matrix(r_matrix_H2B,current_position)
@@ -88,18 +81,38 @@ def calc_pose():
     print("matrix_H2B: ",matrix_H2B)
 
     
-    matrix_g2o = np.array([[1, 0, 0,0],
-                            [0, -1, 0, 0],
-                            [0, 0, -1 ,0],
+    # matrix_g2o = np.array([[1, 0, 0,0],
+    #                         [0, -1, 0, 0],
+    #                         [0, 0, -1 ,0],
+    #                         [0,0,0,1]])
+    matrix_g2o_mc = np.array([[1, 0, 0, 60],
+                            [0, 1, 0, 0],
+                            [0, 0, 1 ,0],
+                            [0,0,0,1]])
+    matrix_g2o_st = np.array([[1, 0, 0, 0],
+                            [0, 1, 0, 0],
+                            [0, 0, 1 ,0],
+                            [0,0,0,1]])
+    matrix_g2o_mb = np.array([[1, 0, 0, -55],
+                            [0, 1, 0, 0],
+                            [0, 0, 1 ,0],
                             [0,0,0,1]])
     
-    matrix_g2B = matrix_H2B @ matrix_C2H @ matrix_o2C @ matrix_g2o
+    mc_matrix_g2B = matrix_H2B @ matrix_C2H @ mc_matrix_o2C @ matrix_g2o_mc
+    st_matrix_g2B = matrix_H2B @ matrix_C2H @ st_matrix_o2C @ matrix_g2o_st
+    mb_matrix_g2B = matrix_H2B @ matrix_C2H @ mb_matrix_o2C @ matrix_g2o_mb
+    
     # matrix_g2B[0][3] =  -matrix_g2B[0][3]
-    print("matrix_g2B: ",matrix_g2B)
+    print("量筒抓取位姿g2B: ",mc_matrix_g2B)
+    print("搅拌器抓取位姿g2B: ",st_matrix_g2B)
+    print("药瓶抓取位姿g2B: ",mb_matrix_g2B)
     
-    np.save(path+ "images/" + "matrix_g2B.npy",matrix_g2B)
     
-    if matrix_g2B is not None:
+    np.save(path+ "images/" + "mc_matrix_g2B.npy",mc_matrix_g2B)
+    np.save(path+ "images/" + "st_matrix_g2B.npy",st_matrix_g2B)
+    np.save(path+ "images/" + "mb_matrix_g2B.npy",mb_matrix_g2B)
+    
+    if  (mc_matrix_g2B is not None) and (st_matrix_g2B is not None) and (mb_matrix_g2B is not None):
         return True
     else:
         return False
